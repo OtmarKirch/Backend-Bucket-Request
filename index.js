@@ -10,7 +10,7 @@ const port = 8080;
 dotenv.config();
 
 const s3Client = new S3Client({
-    region: 'eu-central-1',
+    region: process.env.AWS_REGION,
     endpoint: process.env.S3_ENDPOINT,
     forcePathStyle: true
 });
@@ -18,10 +18,20 @@ const s3Client = new S3Client({
 app.use(cors());
 app.use(fileupload());
 
-app.get('/', (req, res) => {
-    res.send('You have reached the backend server');
-}
-);
+app.get('/', async (req, res) => {
+    try {
+        // Check connection to S3 bucket by listing objects
+        const listObjectsParams = {
+            Bucket: process.env.S3_BUCKET_NAME,
+            MaxKeys: 1 // Limit the number of objects returned to 1 for a quick check
+        };
+        await s3Client.send(new ListObjectsV2Command(listObjectsParams));
+        res.send('You have reached the backend server and are connected to the S3 bucket.');
+    } catch (error) {
+        console.error('Error connecting to S3 bucket:', error.message);
+        res.status(500).send('You reached the server, but no connecting to S3 bucket.');
+    }
+});
 
 app.get('/files/list', (req, res) => {
     const listObjectsParams = {
